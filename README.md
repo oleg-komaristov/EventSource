@@ -15,6 +15,7 @@ EventSource *source = [EventSource eventSourceWithURL:serverURL];
 [source addEventListener:@"hello_event" handler:^(Event *e) {
     NSLog(@"%@: %@", e.event, e.data);
 }];
+[source open];
 ```
 
 It's super simple and will be familiar to anyone who has seen any Server-Sent Events JavaScript code.
@@ -44,6 +45,10 @@ http.createServer(function (req, res) {
 The payload above doesn't include an `id` parameter, but if you include one it will be available in the `Event` object in your Cocoa code.
 
 ### Contact
+
+[Oleg Komaristov](http://github.com/oleg-komaristov)  
+
+or original implementation author:
 
 [Neil Cowburn](http://github.com/neilco)  
 [@neilco](https://twitter.com/neilco)
