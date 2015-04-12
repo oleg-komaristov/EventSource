@@ -221,11 +221,25 @@ static NSString *const ESEventRetryKey = @"retry";
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
 {
     NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-    if (httpResponse.statusCode == 200) { // TODO : Should process case with wrong HTTP status code as error
+    if (httpResponse.statusCode == 200) {
         // Opened
         Event *e = [Event new];
         e.readyState = kEventStateOpen;
         [self informListenersAboutEvent:e ofType:OpenEvent];
+    }
+    else {
+      Event *e = [Event new];
+      e.error = [NSError errorWithDomain:@""
+                                    code:httpResponse.statusCode
+                                userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode] }];
+      e.readyState = kEventStateClosed;
+      [self informListenersAboutEvent:e ofType:ErrorEvent];
+      [self close];
+      
+      dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
+      dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        [self open];
+      });
     }
 }
 

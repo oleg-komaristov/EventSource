@@ -103,6 +103,21 @@ describe(@"EventSource", ^{
       
     });
     
+    it(@"should inform about wrong HTTP code in response", ^{
+      NSInteger wrongCode = 500;
+      [connectionMock stub:@selector(cancel)];
+      [source onError:^(Event *event) {
+        [[theValue(event.readyState) should] equal:theValue(kEventStateClosed)];
+        [[theValue(event.error.code) should] equal:theValue(wrongCode)];
+        wasCalled = YES;
+      }];
+      NSURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:testURL
+                                                            statusCode:wrongCode
+                                                           HTTPVersion:@"2"
+                                                          headerFields:nil];
+      [source connection:connectionMock didReceiveResponse:response];
+    });
+    
     it(@"should inform about connection close", ^{
       [source onError:^(Event *event) {
         [[theValue(event.readyState) should] equal:theValue(kEventStateClosed)];
