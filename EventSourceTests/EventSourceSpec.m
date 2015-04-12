@@ -9,13 +9,6 @@
 #import <Kiwi/Kiwi.h>
 #import "EventSource.h"
 
-/*
- + (instancetype)eventSourceWithURL:(NSURL *)URL;
- + (instancetype)eventSourceWithURL:(NSURL *)URL timeoutInterval:(NSTimeInterval)timeoutInterval;
- - (instancetype)initWithURL:(NSURL *)URL;
- - (instancetype)initWithURL:(NSURL *)URL timeoutInterval:(NSTimeInterval)timeoutInterval;
- */
-
 @interface EventSource (TESTING) <NSURLConnectionDelegate, NSURLConnectionDataDelegate>
 
 @property (nonatomic, strong) NSURL *eventURL;
@@ -145,21 +138,41 @@ describe(@"EventSource", ^{
       
       beforeEach(^{
         semaphore = dispatch_semaphore_create(0);
+        [source onMessage:validateEvent];
       });
       
       it(@"shuold inform about message received", ^{
-        [source onMessage:validateEvent];
         [source connection:connectionMock didReceiveData:data(nil)];
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
       });
       
       it(@"shuold inform about message received in 2 reposnes", ^{
-        [source onMessage:validateEvent];
         NSData *income = data(nil);
         NSInteger breakPosition = rand() % income.length;
         breakPosition = breakPosition ?: 1;
         [source connection:connectionMock didReceiveData:[income subdataWithRange:NSMakeRange(0, breakPosition)]];
         [source connection:connectionMock didReceiveData:[income subdataWithRange:NSMakeRange(breakPosition, income.length - breakPosition)]];
+        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+      });
+      
+      it(@"should inform about multiply events in one response", ^{
+        EventSource *esource = [EventSource eventSourceWithURL:testURL];
+        esource.eventSource = connectionMock;
+        esource.neverMoveToMain = YES;
+        __block NSInteger count = 0;
+        validateEvent = ^void(Event *event) {
+          [[theValue([event.id integerValue]) should] equal:eventId];
+          [[event.data should] equal:eventData];
+          if (++count == 2) {
+            wasCalled = YES;
+            dispatch_semaphore_signal(semaphore);
+          }
+        };
+        [esource addEventListener:@"test event" handler:validateEvent];
+        [esource addEventListener:@"other event" handler:validateEvent];
+        NSMutableData *income = [[NSMutableData alloc] initWithData:data(@"test event")];
+        [income appendData:data(@"other event")];
+        [esource connection:connectionMock didReceiveData:income];
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
       });
       
