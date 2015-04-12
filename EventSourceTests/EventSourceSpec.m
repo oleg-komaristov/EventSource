@@ -107,8 +107,9 @@ describe(@"EventSource", ^{
       NSInteger wrongCode = 500;
       [connectionMock stub:@selector(cancel)];
       [source onError:^(Event *event) {
+        [[event.error.domain should] equal:EventSourceErrorDomain];
+        [[theValue(event.error.code) should] equal:theValue(ESErrorWrongHTTPResponse)];
         [[theValue(event.readyState) should] equal:theValue(kEventStateClosed)];
-        [[theValue(event.error.code) should] equal:theValue(wrongCode)];
         wasCalled = YES;
       }];
       NSURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:testURL
@@ -120,6 +121,8 @@ describe(@"EventSource", ^{
     
     it(@"should inform about connection close", ^{
       [source onError:^(Event *event) {
+        [[event.error.domain should] equal:EventSourceErrorDomain];
+        [[theValue(event.error.code) should] equal:theValue(ESErrorConnectionClosedByServer)];
         [[theValue(event.readyState) should] equal:theValue(kEventStateClosed)];
         wasCalled = YES;
       }];

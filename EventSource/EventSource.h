@@ -14,6 +14,13 @@ typedef enum {
     kEventStateClosed = 2,
 } EventState;
 
+extern NSString *const EventSourceErrorDomain;
+NS_ENUM(NSInteger, EventSourceErrorDomainErros) {
+  
+  ESErrorWrongHTTPResponse = 512,
+  ESErrorConnectionClosedByServer
+};
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /// Describes an Event received from an EventSource

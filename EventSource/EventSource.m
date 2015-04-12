@@ -9,6 +9,8 @@
 #import "EventSource.h"
 #import <CoreGraphics/CGBase.h>
 
+NSString *const EventSourceErrorDomain = @"EventSourceErrorDomain";
+
 static CGFloat const ES_RETRY_INTERVAL = 1.0;
 static CGFloat const ES_DEFAULT_TIMEOUT = 300.0;
 
@@ -229,8 +231,8 @@ static NSString *const ESEventRetryKey = @"retry";
     }
     else {
       Event *e = [Event new];
-      e.error = [NSError errorWithDomain:@""
-                                    code:httpResponse.statusCode
+      e.error = [NSError errorWithDomain:EventSourceErrorDomain
+                                    code:ESErrorWrongHTTPResponse
                                 userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode] }];
       e.readyState = kEventStateClosed;
       [self informListenersAboutEvent:e ofType:ErrorEvent];
@@ -273,8 +275,8 @@ static NSString *const ESEventRetryKey = @"retry";
     
     Event *e = [Event new];
     e.readyState = kEventStateClosed;
-    e.error = [NSError errorWithDomain:@""  // TODO : Add normal events
-                                  code:e.readyState
+    e.error = [NSError errorWithDomain:EventSourceErrorDomain
+                                  code:ESErrorConnectionClosedByServer
                               userInfo:@{ NSLocalizedDescriptionKey: @"Connection with the event source was closed." }];
     [self informListenersAboutEvent:e ofType:ErrorEvent];
   
