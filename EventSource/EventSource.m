@@ -35,7 +35,11 @@ static NSString *const ESEventRetryKey = @"retry";
 @property (nonatomic, strong) id lastEventID;
 @property (nonatomic, strong) NSMutableData *dataBuffer;
 
-- (void)open;
+@property (nonatomic, assign) BOOL neverMoveToMain; // For testing proposes only
+
+- (void)informListenersAboutEvent:(Event *)event ofType:(NSString *)type;
+- (BOOL)isString:(NSString *)string containSuffix:(NSString *)suffix location:(NSInteger *)suffixLocation;
+- (void)processCompleteEvents;
 
 @end
 
@@ -65,11 +69,7 @@ static NSString *const ESEventRetryKey = @"retry";
         _timeoutInterval = timeoutInterval;
         _retryInterval = ES_RETRY_INTERVAL;
         _dataBuffer = [NSMutableData new];
-      
-        dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(_retryInterval * NSEC_PER_SEC));
-        dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-            [self open];
-        });
+        _neverMoveToMain = NO;
     }
     return self;
 }
@@ -100,18 +100,49 @@ static NSString *const ESEventRetryKey = @"retry";
 
 - (void)open
 {
-    wasClosed = NO;
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:self.eventURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:self.timeoutInterval];
-    if (self.lastEventID) {
-        [request setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
-    }
-    self.eventSource = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:YES];
+    void (^open)() = ^void() {
+        wasClosed = NO;
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:self.eventURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:self.timeoutInterval];
+        if (self.lastEventID) {
+            [request setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
+        }
+        self.eventSource = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:YES];
+    };
+  
+  if (![[NSThread mainThread] isMainThread]) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+          open();
+      });
+  }
+  else {
+      open();
+  }
 }
 
 - (void)close
 {
     wasClosed = YES;
     [self.eventSource cancel];
+}
+
+- (void)informListenersAboutEvent:(Event *)event ofType:(NSString *)type {
+  
+    void (^informInCurrent)(EventSourceEventHandler, NSUInteger, BOOL*) = ^void(EventSourceEventHandler handler, NSUInteger idx, BOOL *stop) {
+        handler(event);
+    };
+    void (^informInMain)(EventSourceEventHandler, NSUInteger, BOOL*) = ^void(EventSourceEventHandler handler, NSUInteger idx, BOOL *stop) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            handler(event);
+        });
+    };
+    void (^enumeration)(EventSourceEventHandler, NSUInteger, BOOL*) = ([[NSThread currentThread] isMainThread] || _neverMoveToMain) ? informInCurrent : informInMain;
+  
+    if (!type) {
+        [self.listeners[MessageEvent] enumerateObjectsUsingBlock:enumeration];
+    }
+    if (type || event.event) {
+        [self.listeners[(type ?: event.event)] enumerateObjectsUsingBlock:enumeration];
+    }
 }
 
 - (BOOL)isString:(NSString *)string containSuffix:(NSString *)suffix location:(NSInteger *)suffixLocation {
@@ -179,21 +210,7 @@ static NSString *const ESEventRetryKey = @"retry";
                     }
                 }
                 
-                NSArray *messageHandlers = self.listeners[MessageEvent];
-                for (EventSourceEventHandler handler in messageHandlers) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        handler(e);
-                    });
-                }
-                
-                if (e.event != nil) {
-                    NSArray *namedEventhandlers = self.listeners[e.event];
-                    for (EventSourceEventHandler handler in namedEventhandlers) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            handler(e);
-                        });
-                    }
-                }
+                [self informListenersAboutEvent:e ofType:nil];
             }];
         });
     }
@@ -204,17 +221,11 @@ static NSString *const ESEventRetryKey = @"retry";
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
 {
     NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-    if (httpResponse.statusCode == 200) {
+    if (httpResponse.statusCode == 200) { // TODO : Should process case with wrong HTTP status code as error
         // Opened
         Event *e = [Event new];
         e.readyState = kEventStateOpen;
-        
-        NSArray *openHandlers = self.listeners[OpenEvent];
-        for (EventSourceEventHandler handler in openHandlers) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                handler(e);
-            });
-        }
+        [self informListenersAboutEvent:e ofType:OpenEvent];
     }
 }
 
@@ -223,13 +234,7 @@ static NSString *const ESEventRetryKey = @"retry";
     Event *e = [Event new];
     e.readyState = kEventStateClosed;
     e.error = error;
-    
-    NSArray *errorHandlers = self.listeners[ErrorEvent];
-    for (EventSourceEventHandler handler in errorHandlers) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            handler(e);
-        });
-    }
+    [self informListenersAboutEvent:e ofType:ErrorEvent];
     
     dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
     dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
@@ -254,17 +259,11 @@ static NSString *const ESEventRetryKey = @"retry";
     
     Event *e = [Event new];
     e.readyState = kEventStateClosed;
-    e.error = [NSError errorWithDomain:@""
+    e.error = [NSError errorWithDomain:@""  // TODO : Add normal events
                                   code:e.readyState
                               userInfo:@{ NSLocalizedDescriptionKey: @"Connection with the event source was closed." }];
-    
-    NSArray *errorHandlers = self.listeners[ErrorEvent];
-    for (EventSourceEventHandler handler in errorHandlers) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            handler(e);
-        });
-    }
-    
+    [self informListenersAboutEvent:e ofType:ErrorEvent];
+  
     [self open];
 }
 
