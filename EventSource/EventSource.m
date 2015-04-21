@@ -57,6 +57,10 @@ static NSString *const ESEventRetryKey = @"retry";
     return [[EventSource alloc] initWithURL:URL timeoutInterval:timeoutInterval];
 }
 
++ (instancetype)eventSourceWithURL:(NSURL *)URL timeoutInterval:(NSTimeInterval)timeoutInterval eventId:(id)eventId {
+    return [[EventSource alloc] initWithURL:URL timeoutInterval:timeoutInterval eventId:eventId];
+}
+
 - (id)initWithURL:(NSURL *)URL
 {
     return [self initWithURL:URL timeoutInterval:ES_DEFAULT_TIMEOUT];
@@ -64,6 +68,10 @@ static NSString *const ESEventRetryKey = @"retry";
 
 - (id)initWithURL:(NSURL *)URL timeoutInterval:(NSTimeInterval)timeoutInterval
 {
+    return [self initWithURL:URL timeoutInterval:timeoutInterval eventId:nil];
+}
+
+- (instancetype)initWithURL:(NSURL *)URL timeoutInterval:(NSTimeInterval)timeoutInterval eventId:(id)eventId {
     self = [super init];
     if (self) {
         _listeners = [NSMutableDictionary dictionary];
@@ -72,6 +80,7 @@ static NSString *const ESEventRetryKey = @"retry";
         _retryInterval = ES_RETRY_INTERVAL;
         _dataBuffer = [NSMutableData new];
         _neverMoveToMain = NO;
+        _lastEventID = eventId;
     }
     return self;
 }
