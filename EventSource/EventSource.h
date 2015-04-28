@@ -49,6 +49,9 @@ typedef void (^EventSourceEventHandler)(Event *event);
 /// Connect to and receive Server-Sent Events (SSEs).
 @interface EventSource : NSObject
 
+/// Should work in background (VoIP background mode required)
+@property (nonatomic, assign) BOOL shouldWorkInBackground;
+
 /// Returns a new instance of EventSource with the specified URL.
 ///
 /// @param URL The URL of the EventSource.

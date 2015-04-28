@@ -47,6 +47,17 @@ static NSString *const ESEventRetryKey = @"retry";
 
 @implementation EventSource
 
+- (void)setShouldWorkInBackground:(BOOL)shouldWorkInBackground {
+  __block BOOL isAppSupportVoIP = NO;
+  [[NSBundle mainBundle].infoDictionary[@"UIBackgroundModes"] enumerateObjectsUsingBlock:^(NSString *mode, NSUInteger idx, BOOL *stop) {
+    if ([mode isEqualToString:@"voip"]) {
+      isAppSupportVoIP = YES;
+      *stop = YES;
+    }
+  }];
+  _shouldWorkInBackground = shouldWorkInBackground && isAppSupportVoIP;
+}
+
 + (id)eventSourceWithURL:(NSURL *)URL
 {
     return [[EventSource alloc] initWithURL:URL];
@@ -81,6 +92,7 @@ static NSString *const ESEventRetryKey = @"retry";
         _dataBuffer = [NSMutableData new];
         _neverMoveToMain = NO;
         _lastEventID = eventId;
+        _shouldWorkInBackground = NO;
     }
     return self;
 }
@@ -114,6 +126,10 @@ static NSString *const ESEventRetryKey = @"retry";
     void (^open)() = ^void() {
         wasClosed = NO;
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:self.eventURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:self.timeoutInterval];
+        if (self.shouldWorkInBackground) {
+            [request setNetworkServiceType:NSURLNetworkServiceTypeVoIP];
+        }
+      
         if (self.lastEventID) {
             [request setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
         }
