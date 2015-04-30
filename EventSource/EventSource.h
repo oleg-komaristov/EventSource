@@ -52,6 +52,9 @@ typedef void (^EventSourceEventHandler)(Event *event);
 /// Should work in background (VoIP background mode required)
 @property (nonatomic, assign) BOOL shouldWorkInBackground;
 
+/// Quenue to process events handlers. In case nill - global queue with BACKGROUND priority will be used
+@property (nonatomic, strong) dispatch_queue_t eventsHandlingQueue;
+
 /// Returns a new instance of EventSource with the specified URL.
 ///
 /// @param URL The URL of the EventSource.

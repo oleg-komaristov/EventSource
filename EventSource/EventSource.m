@@ -89,10 +89,10 @@ static NSString *const ESEventRetryKey = @"retry";
         _eventURL = URL;
         _timeoutInterval = timeoutInterval;
         _retryInterval = ES_RETRY_INTERVAL;
-        _dataBuffer = [NSMutableData new];
-        _neverMoveToMain = NO;
+        _dataBuffer = [NSMutableData new];        
         _lastEventID = eventId;
         _shouldWorkInBackground = NO;
+        _neverMoveToMain = YES;
     }
     return self;
 }
@@ -204,7 +204,12 @@ static NSString *const ESEventRetryKey = @"retry";
             [self.dataBuffer setData:[NSData new]];
         }
         eventString = [eventString substringToIndex:lastEventSuffixIdx];
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        dispatch_queue_t procesingQueue = self.eventsHandlingQueue;
+        if (!procesingQueue) {
+          procesingQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+        }
+      
+        dispatch_async(procesingQueue, ^{
             NSArray *eventsList = [eventString componentsSeparatedByString:eventSeparator];
             [eventsList enumerateObjectsUsingBlock:^(NSString *eventString, NSUInteger idx, BOOL *stop) {
                 NSMutableArray *components = [[eventString componentsSeparatedByString:ESEventKeyValuePairSeparator] mutableCopy];
