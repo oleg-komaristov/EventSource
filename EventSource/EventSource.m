@@ -258,15 +258,17 @@ static NSString *const ESEventRetryKey = @"retry";
         Event *e = [Event new];
         e.readyState = kEventStateOpen;
         [self informListenersAboutEvent:e ofType:OpenEvent];
+      
+        [self.dataBuffer setData:[NSData data]];
     }
     else {
-      Event *e = [Event new];
-      e.error = [NSError errorWithDomain:EventSourceErrorDomain
-                                    code:ESErrorWrongHTTPResponse
-                                userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode] }];
-      e.readyState = kEventStateClosed;
-      [self informListenersAboutEvent:e ofType:ErrorEvent];
-      [self close];
+        Event *e = [Event new];
+        e.error = [NSError errorWithDomain:EventSourceErrorDomain
+                                      code:ESErrorWrongHTTPResponse
+                                  userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode] }];
+        e.readyState = kEventStateClosed;
+        [self informListenersAboutEvent:e ofType:ErrorEvent];
+        [self close];
     }
 }
 
