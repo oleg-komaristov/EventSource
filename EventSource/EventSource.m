@@ -13,6 +13,8 @@ NSString *const EventSourceErrorDomain = @"EventSourceErrorDomain";
 
 static CGFloat const ES_RETRY_INTERVAL = 1.0;
 static CGFloat const ES_DEFAULT_TIMEOUT = 300.0;
+static CGFloat const ES_MAXIMUM_RETRY_INTERVAL = 360.0;
+static CGFloat const ES_RETRY_INTERVAL_MULTYPLAYER = 2.0;
 
 static NSString *const ESKeyValueDelimiter = @": ";
 static NSString *const ESEventSeparatorLFLF = @"\n\n";
@@ -260,6 +262,8 @@ static NSString *const ESEventRetryKey = @"retry";
         [self informListenersAboutEvent:e ofType:OpenEvent];
       
         [self.dataBuffer setData:[NSData data]];
+      
+        self.retryInterval = ES_RETRY_INTERVAL;
     }
     else {
         Event *e = [Event new];
@@ -277,8 +281,10 @@ static NSString *const ESEventRetryKey = @"retry";
     Event *e = [Event new];
     e.readyState = kEventStateClosed;
     e.error = error;
+  
     [self informListenersAboutEvent:e ofType:ErrorEvent];
-    
+  
+    self.retryInterval = MIN(ES_MAXIMUM_RETRY_INTERVAL, self.retryInterval * ES_RETRY_INTERVAL_MULTYPLAYER);
     dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
     dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
         [self open];
@@ -307,7 +313,11 @@ static NSString *const ESEventRetryKey = @"retry";
                               userInfo:@{ NSLocalizedDescriptionKey: @"Connection with the event source was closed." }];
     [self informListenersAboutEvent:e ofType:ErrorEvent];
   
-    [self open];
+    self.retryInterval = MIN(ES_MAXIMUM_RETRY_INTERVAL, self.retryInterval * ES_RETRY_INTERVAL_MULTYPLAYER);
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        [self open];
+    });
 }
 
 @end
