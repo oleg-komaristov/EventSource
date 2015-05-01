@@ -267,11 +267,6 @@ static NSString *const ESEventRetryKey = @"retry";
       e.readyState = kEventStateClosed;
       [self informListenersAboutEvent:e ofType:ErrorEvent];
       [self close];
-      
-      dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
-      dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-        [self open];
-      });
     }
 }
 
