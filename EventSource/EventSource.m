@@ -33,6 +33,7 @@ static NSString *const ESEventRetryKey = @"retry";
 
 @property (nonatomic, strong) NSURL *eventURL;
 @property (nonatomic, strong) NSURLConnection *eventSource;
+@property (nonatomic, strong) NSMutableURLRequest *eventRequest;
 @property (nonatomic, strong) NSMutableDictionary *listeners;
 @property (nonatomic, assign) NSTimeInterval timeoutInterval;
 @property (nonatomic, assign) NSTimeInterval retryInterval;
@@ -127,16 +128,23 @@ static NSString *const ESEventRetryKey = @"retry";
 {
     void (^open)() = ^void() {
         wasClosed = NO;
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:self.eventURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:self.timeoutInterval];
-        if (self.shouldWorkInBackground) {
-            [request setNetworkServiceType:NSURLNetworkServiceTypeVoIP];
+        if (!_eventSource) {
+            _eventRequest = [NSMutableURLRequest requestWithURL:self.eventURL
+                                                    cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                                timeoutInterval:self.timeoutInterval];
+            if (self.shouldWorkInBackground) {
+                [_eventRequest setNetworkServiceType:NSURLNetworkServiceTypeVoIP];
+            }
+            _eventSource = [[NSURLConnection alloc] initWithRequest:_eventRequest
+                                                           delegate:self
+                                                   startImmediately:NO];
+            [_eventSource scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
         }
-      
         if (self.lastEventID) {
-            [request setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
+            [_eventRequest setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
         }
-        self.eventSource = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:YES];
-    };
+        [_eventSource start];
+  };
   
   if (![[NSThread mainThread] isMainThread]) {
       dispatch_async(dispatch_get_main_queue(), ^{
