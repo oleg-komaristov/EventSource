@@ -128,21 +128,25 @@ static NSString *const ESEventRetryKey = @"retry";
 {
     void (^open)() = ^void() {
         wasClosed = NO;
-        if (!_eventSource) {
+        if (!_eventRequest) {
             _eventRequest = [NSMutableURLRequest requestWithURL:self.eventURL
                                                     cachePolicy:NSURLRequestReloadIgnoringCacheData
                                                 timeoutInterval:self.timeoutInterval];
             if (self.shouldWorkInBackground) {
                 [_eventRequest setNetworkServiceType:NSURLNetworkServiceTypeVoIP];
             }
-            _eventSource = [[NSURLConnection alloc] initWithRequest:_eventRequest
-                                                           delegate:self
-                                                   startImmediately:NO];
-            [_eventSource scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
         }
         if (self.lastEventID) {
             [_eventRequest setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
         }
+        if (_eventSource) {
+            [_eventSource cancel];
+            _eventSource = nil;
+        }
+        _eventSource = [[NSURLConnection alloc] initWithRequest:_eventRequest
+                                                       delegate:self
+                                               startImmediately:NO];
+        [_eventSource scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
         [_eventSource start];
   };
   
@@ -160,6 +164,7 @@ static NSString *const ESEventRetryKey = @"retry";
 {
     wasClosed = YES;
     [self.eventSource cancel];
+    self.eventSource = nil;
 }
 
 - (void)informListenersAboutEvent:(Event *)event ofType:(NSString *)type {
