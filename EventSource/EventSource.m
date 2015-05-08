@@ -12,7 +12,7 @@
 NSString *const EventSourceErrorDomain = @"EventSourceErrorDomain";
 
 static CGFloat const ES_RETRY_INTERVAL = 1.0;
-static CGFloat const ES_DEFAULT_TIMEOUT = 300.0;
+static CGFloat const ES_DEFAULT_TIMEOUT = 600.0;
 static CGFloat const ES_MAXIMUM_RETRY_INTERVAL = 360.0;
 static CGFloat const ES_RETRY_INTERVAL_MULTYPLAYER = 2.0;
 
