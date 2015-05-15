@@ -15,6 +15,7 @@ typedef enum {
 } EventState;
 
 extern NSString *const EventSourceErrorDomain;
+extern NSString *const HTTPStatusCodeKey;
 NS_ENUM(NSInteger, EventSourceErrorDomainErros) {
   
   ESErrorWrongHTTPResponse = 512,

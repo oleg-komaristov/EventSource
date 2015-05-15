@@ -10,6 +10,7 @@
 #import <CoreGraphics/CGBase.h>
 
 NSString *const EventSourceErrorDomain = @"EventSourceErrorDomain";
+NSString *const HTTPStatusCodeKey = @"EventSourceHTTPErrorCode";
 
 static CGFloat const ES_RETRY_INTERVAL = 1.0;
 static CGFloat const ES_DEFAULT_TIMEOUT = 600.0;
@@ -138,7 +139,7 @@ static NSString *const ESEventRetryKey = @"retry";
         }
         if (self.lastEventID) {
             [_eventRequest setValue:self.lastEventID forHTTPHeaderField:@"Last-Event-ID"];
-        }
+        }        
         if (_eventSource) {
             [_eventSource cancel];
             _eventSource = nil;
@@ -282,7 +283,8 @@ static NSString *const ESEventRetryKey = @"retry";
         Event *e = [Event new];
         e.error = [NSError errorWithDomain:EventSourceErrorDomain
                                       code:ESErrorWrongHTTPResponse
-                                  userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode] }];
+                                  userInfo:@{ NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Wrong HTTP response code: %ld", (long)httpResponse.statusCode],
+                                              HTTPStatusCodeKey : @(httpResponse.statusCode) }];
         e.readyState = kEventStateClosed;
         [self informListenersAboutEvent:e ofType:ErrorEvent];
         [self close];
