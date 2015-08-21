@@ -103,11 +103,15 @@ static NSString *const ESEventRetryKey = @"retry";
 
 - (void)addEventListener:(NSString *)eventName handler:(EventSourceEventHandler)handler
 {
-    if (self.listeners[eventName] == nil) {
-        [self.listeners setObject:[NSMutableArray array] forKey:eventName];
+    if (_listeners[eventName] == nil) {
+        [_listeners setObject:[NSMutableArray array] forKey:eventName];
     }
     
-    [self.listeners[eventName] addObject:handler];
+    [_listeners[eventName] addObject:handler];
+}
+
+- (NSArray *)listenersOfType:(id)type {
+  return [self.listeners[type ?: MessageEvent] copy];
 }
 
 - (void)onMessage:(EventSourceEventHandler)handler
@@ -180,11 +184,9 @@ static NSString *const ESEventRetryKey = @"retry";
     };
     void (^enumeration)(EventSourceEventHandler, NSUInteger, BOOL*) = ([[NSThread currentThread] isMainThread] || _neverMoveToMain) ? informInCurrent : informInMain;
   
-    if (!type) {
-        [self.listeners[MessageEvent] enumerateObjectsUsingBlock:enumeration];
-    }
-    if (type || event.event) {
-        [self.listeners[(type ?: event.event)] enumerateObjectsUsingBlock:enumeration];
+    [[self listenersOfType:type] enumerateObjectsUsingBlock:enumeration];
+    if (!type && event.event) {
+        [[self listenersOfType:event.event] enumerateObjectsUsingBlock:enumeration];
     }
 }
 
