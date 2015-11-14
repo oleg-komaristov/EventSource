@@ -101,6 +101,10 @@ static NSString *const ESEventRetryKey = @"retry";
     return self;
 }
 
+- (void)dealloc {
+  [self close];
+}
+
 - (void)addEventListener:(NSString *)eventName handler:(EventSourceEventHandler)handler
 {
     if (_listeners[eventName] == nil) {
@@ -302,9 +306,10 @@ static NSString *const ESEventRetryKey = @"retry";
     [self informListenersAboutEvent:e ofType:ErrorEvent];
   
     self.retryInterval = MIN(ES_MAXIMUM_RETRY_INTERVAL, self.retryInterval * ES_RETRY_INTERVAL_MULTYPLAYER);
+    __weak EventSource *w_self = self;
     dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
     dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-        [self open];
+        [w_self open];
     });
 }
 

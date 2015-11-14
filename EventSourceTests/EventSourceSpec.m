@@ -41,7 +41,12 @@ describe(@"EventSource", ^{
   beforeEach(^{
     source = [EventSource eventSourceWithURL:testURL];
     connectionMock = [KWMock mockForClass:[NSURLConnection class]];
+    [connectionMock stub:@selector(cancel)];
     source.eventSource = connectionMock;
+  });
+  
+  afterEach(^{
+    source = nil;
   });
   
   it(@"should init with URL", ^{
@@ -70,8 +75,8 @@ describe(@"EventSource", ^{
     __block BOOL wasCalled = NO;
     
     beforeEach(^{
-      connectionMock = [KWMock mockForClass:[NSURLConnection class]];
-      source.eventSource = connectionMock;
+//      connectionMock = [KWMock mockForClass:[NSURLConnection class]];
+//      source.eventSource = connectionMock;
       source.neverMoveToMain = YES;
       wasCalled = NO;
     });
@@ -105,7 +110,7 @@ describe(@"EventSource", ^{
     
     it(@"should inform about wrong HTTP code in response", ^{
       NSInteger wrongCode = 500;
-      [connectionMock stub:@selector(cancel)];
+//      [connectionMock stub:@selector(cancel)];
       [source onError:^(Event *event) {
         [[event.error.domain should] equal:EventSourceErrorDomain];
         [[theValue(event.error.code) should] equal:theValue(ESErrorWrongHTTPResponse)];
@@ -127,6 +132,7 @@ describe(@"EventSource", ^{
         wasCalled = YES;
       }];
       [source connectionDidFinishLoading:connectionMock];
+      source.listeners = nil;
     });
     
     context(@"events processing", ^{
