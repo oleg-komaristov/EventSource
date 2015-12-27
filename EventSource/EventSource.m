@@ -28,9 +28,7 @@ static NSString *const ESEventIDKey = @"id";
 static NSString *const ESEventEventKey = @"event";
 static NSString *const ESEventRetryKey = @"retry";
 
-@interface EventSource () <NSURLConnectionDelegate, NSURLConnectionDataDelegate> {
-    BOOL wasClosed;
-}
+@interface EventSource () <NSURLConnectionDelegate, NSURLConnectionDataDelegate>
 
 @property (nonatomic, strong) NSURL *eventURL;
 @property (nonatomic, strong) NSURLConnection *eventSource;
@@ -40,6 +38,8 @@ static NSString *const ESEventRetryKey = @"retry";
 @property (nonatomic, assign) NSTimeInterval retryInterval;
 @property (nonatomic, strong) id lastEventID;
 @property (nonatomic, strong) NSMutableData *dataBuffer;
+
+@property (nonatomic, assign) BOOL wasClosed;
 
 @property (nonatomic, assign) BOOL neverMoveToMain; // For testing proposes only
 
@@ -136,7 +136,7 @@ static NSString *const ESEventRetryKey = @"retry";
 - (void)open
 {
     void (^open)() = ^void() {
-        wasClosed = NO;
+        self.wasClosed = NO;
         if (!_eventRequest) {
             _eventRequest = [NSMutableURLRequest requestWithURL:self.eventURL
                                                     cachePolicy:NSURLRequestReloadIgnoringCacheData
@@ -171,7 +171,7 @@ static NSString *const ESEventRetryKey = @"retry";
 
 - (void)close
 {
-    wasClosed = YES;
+    self.wasClosed = YES;
     [self.eventSource cancel];
     self.eventSource = nil;
 }
@@ -309,7 +309,9 @@ static NSString *const ESEventRetryKey = @"retry";
     __weak EventSource *w_self = self;
     dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.retryInterval * NSEC_PER_SEC));
     dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+      if(!w_self.wasClosed) {
         [w_self open];
+      }
     });
 }
 
@@ -324,7 +326,7 @@ static NSString *const ESEventRetryKey = @"retry";
     [self processCompleteEvents];
     [self.dataBuffer setData:[NSData new]];
   
-    if (wasClosed) {
+    if (self.wasClosed) {
         return;
     }
     
